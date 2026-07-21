@@ -12,7 +12,7 @@ import { createUploadLink } from 'apollo-upload-client';
 
 function makeClient() {
   const uri = typeof window === 'undefined' 
-    ? 'http://api:8000/graphql/'
+    ? process.env.BACKEND_INTERNAL_URL ? `${process.env.BACKEND_INTERNAL_URL}/graphql/` : 'http://backend:8000/graphql/'
     : '/api/graphql';
 
   const httpLink = createUploadLink({
