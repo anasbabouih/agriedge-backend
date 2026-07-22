@@ -1,5 +1,5 @@
 /** @type {import('next').NextConfig} */
-const BACKEND_URL = 'http://105.74.66.113:8000';
+const BACKEND_URL = 'http://105.74.66.113';
 
 const nextConfig = {
   async rewrites() {

@@ -12,7 +12,7 @@ import { createUploadLink } from 'apollo-upload-client';
 
 function makeClient() {
   const uri = typeof window === 'undefined' 
-    ? 'http://105.74.66.113:8000/graphql/'
+    ? 'http://105.74.66.113/graphql/'
     : '/api/graphql';
 
   const httpLink = createUploadLink({
