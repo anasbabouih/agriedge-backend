@@ -27,7 +27,7 @@ const SSO_LOGIN_MUTATION = gql`
 
 import { GoogleOAuthProvider, GoogleLogin } from '@react-oauth/google';
 
-export function LoginForm() {
+function LoginForm() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);

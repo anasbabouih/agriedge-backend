@@ -62,6 +62,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -97,11 +98,11 @@ WSGI_APPLICATION = 'config.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': os.environ.get('POSTGRES_DB', 'agriedge'),
-        'USER': os.environ.get('POSTGRES_USER', 'agriedge_user'),
-        'PASSWORD': os.environ.get('POSTGRES_PASSWORD', 'agriedge_pass'),
-        'HOST': os.environ.get('POSTGRES_HOST', 'db'),
-        'PORT': os.environ.get('POSTGRES_PORT', '5432'),
+        'NAME': os.environ.get('DB_NAME', os.environ.get('POSTGRES_DB', 'agriedge_db')),
+        'USER': os.environ.get('DB_USER', os.environ.get('POSTGRES_USER', 'agriedge_user')),
+        'PASSWORD': os.environ.get('DB_PASSWORD', os.environ.get('POSTGRES_PASSWORD', 'agriedge_secure_pass')),
+        'HOST': os.environ.get('DB_HOST', os.environ.get('POSTGRES_HOST', 'db')),
+        'PORT': os.environ.get('DB_PORT', os.environ.get('POSTGRES_PORT', '5432')),
     }
 }
 
@@ -191,3 +192,5 @@ CELERY_BEAT_SCHEDULE = {
         'schedule': crontab(month_of_year='1', day_of_month='1', hour='0', minute='0'), # Jan 1st at midnight
     },
 }
+
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedStaticFilesStorage'
