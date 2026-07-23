@@ -11,7 +11,10 @@ import { useToast } from '@/components/Toast';
 const DASHBOARD_QUERY = gql`
   query GetDashboard {
     me {
+      id
       firstName
+      lastName
+      role
       soldeConges
     }
     myRequests {
@@ -197,14 +200,34 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-8">
-      <div className="flex justify-between items-end">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Bonjour, {me.firstName}</h1>
-          <p className="text-text-muted mt-1">Voici le résumé de vos congés.</p>
+          <div className="flex items-center gap-3">
+            <h1 className="text-3xl font-bold tracking-tight">Bonjour, {me.firstName}</h1>
+            <span className="px-3 py-1 bg-primary/10 text-primary text-xs font-semibold rounded-full uppercase tracking-wider">
+              {me.role?.replace('_', ' ')}
+            </span>
+          </div>
+          <p className="text-text-muted mt-1">Voici le résumé de votre espace de gestion des congés.</p>
         </div>
-        <Link href="/leaves/new" className="btn-primary">
-          Nouvelle Demande
-        </Link>
+        <div className="flex items-center gap-3">
+          {(me.role === 'MANAGER_N1' || me.role === 'RH' || me.role === 'ADMIN' || me.role === 'DG') && (
+            <Link href="/validation" className="btn-secondary flex items-center gap-2">
+              <CheckCircle className="w-4 h-4 text-emerald-400" />
+              Espace Validation
+            </Link>
+          )}
+          {me.role === 'ADMIN' && (
+            <Link href="/dashboard/admin" className="btn-secondary flex items-center gap-2">
+              <FileText className="w-4 h-4 text-blue-400" />
+              Espace Admin
+            </Link>
+          )}
+          <Link href="/leaves/new" className="btn-primary flex items-center gap-2">
+            <CalendarCheck className="w-4 h-4" />
+            Nouvelle Demande
+          </Link>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

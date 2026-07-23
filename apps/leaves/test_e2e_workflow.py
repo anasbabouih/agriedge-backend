@@ -197,7 +197,7 @@ class E2EWorkflowTest(TestCase):
         }
         res = self.graphql_request(create_mutation, create_vars, token)
         self.assertFalse(res['data']['submitLeaveRequest']['success'])
-        self.assertIn("délai de préavis pour un Congé Payé est de 7 jours", res['data']['submitLeaveRequest']['error'])
+        self.assertIn("Le délai de préavis pour ce type de congé est de 7 jours minimum", res['data']['submitLeaveRequest']['error'])
 
     def test_cancellation(self):
         def login(username, password="password123"):

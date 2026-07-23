@@ -4,7 +4,8 @@ import { useState } from 'react';
 import { gql, useMutation } from '@apollo/client';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { Leaf, Loader2, AlertCircle, Eye, EyeOff } from 'lucide-react';
+import { Leaf, Loader2, AlertCircle, Eye, EyeOff, Shield, UserCheck, Briefcase, User, Building } from 'lucide-react';
+import { GoogleOAuthProvider, GoogleLogin } from '@react-oauth/google';
 
 const TOKEN_AUTH_MUTATION = gql`
   mutation TokenAuth($username: String!, $password: String!) {
@@ -25,8 +26,6 @@ const SSO_LOGIN_MUTATION = gql`
   }
 `;
 
-import { GoogleOAuthProvider, GoogleLogin } from '@react-oauth/google';
-
 function LoginForm() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -40,7 +39,7 @@ function LoginForm() {
       router.push('/dashboard');
     },
     onError: (error) => {
-      setErrorMsg(error.message || 'Invalid credentials');
+      setErrorMsg(error.message || 'Identifiants invalides');
     }
   });
 
@@ -54,7 +53,7 @@ function LoginForm() {
       }
     },
     onError: (error) => {
-      setErrorMsg(error.message || 'SSO failed');
+      setErrorMsg(error.message || 'Échec de la connexion SSO');
     }
   });
 
@@ -62,6 +61,11 @@ function LoginForm() {
     e.preventDefault();
     setErrorMsg('');
     tokenAuth({ variables: { username, password } });
+  };
+
+  const handleQuickLogin = (userRole: string) => {
+    setErrorMsg('');
+    tokenAuth({ variables: { username: userRole, password: 'password123' } });
   };
 
   return (
@@ -74,14 +78,14 @@ function LoginForm() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, ease: "easeOut" }}
-        className="w-full max-w-md p-8 glass rounded-3xl z-10 mx-4"
+        className="w-full max-w-lg p-8 glass rounded-3xl z-10 mx-4"
       >
-        <div className="flex flex-col items-center mb-8">
-          <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mb-4">
+        <div className="flex flex-col items-center mb-6">
+          <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mb-3">
             <Leaf className="w-8 h-8 text-primary" />
           </div>
           <h1 className="text-3xl font-bold text-text-main tracking-tight">AgriEdge</h1>
-          <p className="text-text-muted mt-2 text-sm font-medium">Leave Management System</p>
+          <p className="text-text-muted mt-1 text-sm font-medium">Système de Gestion des Congés</p>
         </div>
 
         {errorMsg && (
@@ -95,62 +99,68 @@ function LoginForm() {
           </motion.div>
         )}
 
-        {/* SSO Section */}
-        <div className="mb-6 space-y-3">
-          <GoogleLogin
-            onSuccess={credentialResponse => {
-              if (credentialResponse.credential) {
-                ssoLogin({ variables: { idToken: credentialResponse.credential } });
-              }
-            }}
-            onError={() => {
-              setErrorMsg('La connexion Google a échoué.');
-            }}
-            theme="filled_black"
-            text="continue_with"
-            shape="pill"
-          />
-          
-          {/* Mock SSO Button for Development Testing without real Google Client ID */}
+        {/* Quick Role Login Buttons */}
+        <div className="mb-6 space-y-2.5">
+          <p className="text-xs font-semibold text-text-muted uppercase tracking-wider text-center mb-2">
+            Connexion Rapide (Comptes de Test)
+          </p>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              onClick={() => handleQuickLogin('admin')}
+              disabled={basicLoading}
+              className="flex items-center gap-2 p-2.5 rounded-xl border border-border bg-surface hover:bg-surface-hover transition-colors text-xs font-medium text-text-main"
+            >
+              <Shield className="w-4 h-4 text-purple-400 shrink-0" />
+              <span>Administrateur</span>
+            </button>
+
+            <button
+              onClick={() => handleQuickLogin('rh')}
+              disabled={basicLoading}
+              className="flex items-center gap-2 p-2.5 rounded-xl border border-border bg-surface hover:bg-surface-hover transition-colors text-xs font-medium text-text-main"
+            >
+              <Briefcase className="w-4 h-4 text-blue-400 shrink-0" />
+              <span>Responsable RH</span>
+            </button>
+
+            <button
+              onClick={() => handleQuickLogin('manager')}
+              disabled={basicLoading}
+              className="flex items-center gap-2 p-2.5 rounded-xl border border-border bg-surface hover:bg-surface-hover transition-colors text-xs font-medium text-text-main"
+            >
+              <UserCheck className="w-4 h-4 text-emerald-400 shrink-0" />
+              <span>Manager N1</span>
+            </button>
+
+            <button
+              onClick={() => handleQuickLogin('employee')}
+              disabled={basicLoading}
+              className="flex items-center gap-2 p-2.5 rounded-xl border border-border bg-surface hover:bg-surface-hover transition-colors text-xs font-medium text-text-main"
+            >
+              <User className="w-4 h-4 text-amber-400 shrink-0" />
+              <span>Employé (Anas)</span>
+            </button>
+          </div>
           <button
-            onClick={() => ssoLogin({ variables: { idToken: 'mock_google_token_admin' } })}
-            disabled={ssoLoading}
-            className="w-full flex items-center justify-center gap-2 py-2 px-4 rounded-full border border-border bg-surface hover:bg-surface-hover transition-colors text-sm font-medium"
+            onClick={() => handleQuickLogin('dg')}
+            disabled={basicLoading}
+            className="w-full flex items-center justify-center gap-2 p-2.5 rounded-xl border border-border bg-surface hover:bg-surface-hover transition-colors text-xs font-medium text-text-main"
           >
-            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
-              <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
-              <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
-              <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
-            </svg>
-            Continuer avec l'e-mail d'entreprise (Mock Admin)
-          </button>
-          
-          <button
-            onClick={() => ssoLogin({ variables: { idToken: 'mock_google_token_manager' } })}
-            disabled={ssoLoading}
-            className="w-full flex items-center justify-center gap-2 py-2 px-4 rounded-full border border-border bg-surface hover:bg-surface-hover transition-colors text-sm font-medium"
-          >
-            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
-              <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
-              <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
-              <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
-            </svg>
-            Continuer avec l'e-mail d'entreprise (Mock Manager N1)
+            <Building className="w-4 h-4 text-cyan-400 shrink-0" />
+            <span>Directeur Général (DG)</span>
           </button>
         </div>
 
-        <div className="relative flex items-center py-5">
+        <div className="relative flex items-center py-3">
           <div className="flex-grow border-t border-border"></div>
-          <span className="flex-shrink-0 mx-4 text-text-muted text-sm">Ou connexion classique</span>
+          <span className="flex-shrink-0 mx-4 text-text-muted text-xs uppercase tracking-wider">Ou connexion classique</span>
           <div className="flex-grow border-t border-border"></div>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-5">
+        <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-text-muted mb-1.5" htmlFor="username">
-              Identifiant
+              Identifiant / Nom d'utilisateur
             </label>
             <input
               id="username"
@@ -158,7 +168,7 @@ function LoginForm() {
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               className="input-premium"
-              placeholder="Ex: AE123 ou test_emp"
+              placeholder="admin, rh, manager, employee..."
               required
             />
           </div>

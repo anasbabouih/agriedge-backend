@@ -99,9 +99,11 @@ export default function Sidebar() {
       </div>
 
       <div className="p-4 border-t border-border">
-        <div className="px-3 py-3 rounded-xl bg-surface-hover mb-4">
-          <p className="text-sm font-medium text-text-main truncate">{user.firstName} {user.lastName}</p>
-          <p className="text-xs text-text-muted capitalize">{user.role.toLowerCase().replace('_', ' ')}</p>
+        <div className="px-3 py-3 rounded-xl bg-surface-hover/70 border border-border mb-3">
+          <p className="text-sm font-semibold text-text-main truncate">{user.firstName} {user.lastName}</p>
+          <span className="inline-block mt-1 px-2.5 py-0.5 text-[10px] font-bold rounded-full bg-primary/10 text-primary border border-primary/20 uppercase tracking-wider">
+            {user.role?.replace('_', ' ')}
+          </span>
         </div>
         <button
           onClick={() => setPasswordModalOpen(true)}
