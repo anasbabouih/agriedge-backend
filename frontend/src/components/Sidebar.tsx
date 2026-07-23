@@ -47,9 +47,9 @@ export default function Sidebar() {
 
   const links = [
     { href: '/dashboard', label: 'Tableau de bord', icon: LayoutDashboard, roles: ['EMPLOYE', 'MANAGER_N1', 'RH', 'ADMIN', 'DG'] },
-    { href: '/dashboard/manager', label: 'Espace Manager', icon: LayoutDashboard, roles: ['MANAGER_N1'] },
+    { href: '/dashboard/manager', label: 'Espace Manager', icon: LayoutDashboard, roles: ['MANAGER_N1', 'ADMIN'] },
     { href: '/calendar', label: 'Calendrier', icon: Calendar, roles: ['MANAGER_N1', 'RH', 'ADMIN', 'DG', 'EMPLOYE'] },
-    { href: '/leaves/new', label: 'Nouvelle Demande', icon: FilePlus, roles: ['EMPLOYE', 'MANAGER_N1', 'RH', 'ADMIN'] },
+    { href: '/leaves/new', label: 'Nouvelle Demande', icon: FilePlus, roles: ['EMPLOYE', 'MANAGER_N1', 'RH', 'ADMIN', 'DG'] },
     { href: '/validation', label: 'Validation', icon: CheckSquare, roles: ['MANAGER_N1', 'RH', 'ADMIN', 'DG'] },
     { href: '/dashboard/admin', label: 'Administration', icon: UserCog, roles: ['ADMIN'] },
   ];
