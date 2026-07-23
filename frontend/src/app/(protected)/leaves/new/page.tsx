@@ -1,9 +1,9 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useQuery, useMutation, gql } from '@apollo/client';
-import { Calendar, FileText, CheckCircle, AlertCircle, ArrowLeft, Upload, AlertTriangle, ShieldAlert } from 'lucide-react';
+import { Calendar, FileText, CheckCircle, AlertCircle, ArrowLeft, Upload, AlertTriangle, ShieldAlert, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 
 const GET_LEAVE_TYPES = gql`
@@ -18,6 +18,22 @@ const GET_LEAVE_TYPES = gql`
   }
 `;
 
+const GET_LEAVE_REQUEST = gql`
+  query GetLeaveRequest($id: ID!) {
+    leaveRequest(id: $id) {
+      id
+      dateDebut
+      dateFin
+      motif
+      statut
+      pieceJointe
+      leaveType {
+        id
+      }
+    }
+  }
+`;
+
 const SUBMIT_LEAVE = gql`
   mutation SubmitLeaveRequest(
     $leaveTypeId: ID!
@@ -26,6 +42,7 @@ const SUBMIT_LEAVE = gql`
     $isHalfDay: Boolean
     $motif: String
     $isEmergency: Boolean
+    $pieceJointe: Upload
   ) {
     submitLeaveRequest(
       leaveTypeId: $leaveTypeId
@@ -34,6 +51,7 @@ const SUBMIT_LEAVE = gql`
       isHalfDay: $isHalfDay
       motif: $motif
       isEmergency: $isEmergency
+      pieceJointe: $pieceJointe
     ) {
       success
       error
@@ -45,10 +63,52 @@ const SUBMIT_LEAVE = gql`
   }
 `;
 
-export default function NewLeaveRequest() {
+const UPDATE_LEAVE = gql`
+  mutation UpdateLeaveRequest(
+    $id: ID!
+    $leaveTypeId: ID
+    $dateDebut: Date
+    $dateFin: Date
+    $isHalfDay: Boolean
+    $motif: String
+    $isEmergency: Boolean
+    $pieceJointe: Upload
+  ) {
+    updateLeaveRequest(
+      id: $id
+      leaveTypeId: $leaveTypeId
+      dateDebut: $dateDebut
+      dateFin: $dateFin
+      isHalfDay: $isHalfDay
+      motif: $motif
+      isEmergency: $isEmergency
+      pieceJointe: $pieceJointe
+    ) {
+      success
+      error
+      leaveRequest {
+        id
+        statut
+      }
+    }
+  }
+`;
+
+function LeaveRequestForm() {
   const router = useRouter();
-  const { data, loading: loadingTypes } = useQuery(GET_LEAVE_TYPES);
-  const [submitLeave, { loading: submitting }] = useMutation(SUBMIT_LEAVE);
+  const searchParams = useSearchParams();
+  const editId = searchParams.get('edit');
+
+  const { data: typesData, loading: loadingTypes } = useQuery(GET_LEAVE_TYPES);
+  const { data: requestData, loading: loadingRequest } = useQuery(GET_LEAVE_REQUEST, {
+    variables: { id: editId },
+    skip: !editId,
+    fetchPolicy: 'network-only',
+  });
+
+  const [submitLeave, { loading: submittingNew }] = useMutation(SUBMIT_LEAVE);
+  const [updateLeave, { loading: submittingUpdate }] = useMutation(UPDATE_LEAVE);
+  const submitting = submittingNew || submittingUpdate;
 
   const [formData, setFormData] = useState({
     leaveTypeId: '',
@@ -62,7 +122,22 @@ export default function NewLeaveRequest() {
   const [fileAttachment, setFileAttachment] = useState<File | null>(null);
   const [errorMsg, setErrorMsg] = useState('');
 
-  const selectedType = data?.leaveTypes.find((t: any) => t.id === formData.leaveTypeId);
+  // Populate form when editing an existing leave request
+  useEffect(() => {
+    if (requestData?.leaveRequest) {
+      const req = requestData.leaveRequest;
+      setFormData({
+        leaveTypeId: req.leaveType?.id || '',
+        dateDebut: req.dateDebut || '',
+        dateFin: req.dateFin || '',
+        isHalfDay: false,
+        motif: req.motif || '',
+        isEmergency: false,
+      });
+    }
+  }, [requestData]);
+
+  const selectedType = typesData?.leaveTypes.find((t: any) => t.id === formData.leaveTypeId);
 
   // Compute notice period discrepancy
   let showNoticeWarning = false;
@@ -80,36 +155,70 @@ export default function NewLeaveRequest() {
     e.preventDefault();
     setErrorMsg('');
 
-    if (selectedType?.requiresAttachment && !fileAttachment) {
+    if (selectedType?.requiresAttachment && !fileAttachment && !editId) {
       setErrorMsg('Une pièce jointe est obligatoire pour ce type de congé (ex: justificatif médical).');
       return;
     }
 
     try {
-      const res = await submitLeave({
-        variables: {
-          leaveTypeId: formData.leaveTypeId,
-          dateDebut: formData.dateDebut,
-          dateFin: formData.dateFin,
-          isHalfDay: formData.isHalfDay,
-          motif: formData.motif,
-          isEmergency: formData.isEmergency,
-        },
-      });
+      if (editId) {
+        const res = await updateLeave({
+          variables: {
+            id: editId,
+            leaveTypeId: formData.leaveTypeId,
+            dateDebut: formData.dateDebut,
+            dateFin: formData.dateFin,
+            isHalfDay: formData.isHalfDay,
+            motif: formData.motif,
+            isEmergency: formData.isEmergency,
+            ...(fileAttachment ? { pieceJointe: fileAttachment } : {}),
+          },
+        });
 
-      if (res.data.submitLeaveRequest.success) {
-        router.push('/dashboard');
+        if (res.data.updateLeaveRequest.success) {
+          router.push('/dashboard');
+        } else {
+          const err = res.data.updateLeaveRequest.error || 'Erreur lors de la modification.';
+          setErrorMsg(err);
+          if (err.includes('préavis')) {
+            setFormData((prev) => ({ ...prev, isEmergency: true }));
+          }
+        }
       } else {
-        const err = res.data.submitLeaveRequest.error || 'Erreur lors de la soumission.';
-        setErrorMsg(err);
-        if (err.includes('préavis')) {
-          setFormData((prev) => ({ ...prev, isEmergency: true }));
+        const res = await submitLeave({
+          variables: {
+            leaveTypeId: formData.leaveTypeId,
+            dateDebut: formData.dateDebut,
+            dateFin: formData.dateFin,
+            isHalfDay: formData.isHalfDay,
+            motif: formData.motif,
+            isEmergency: formData.isEmergency,
+            ...(fileAttachment ? { pieceJointe: fileAttachment } : {}),
+          },
+        });
+
+        if (res.data.submitLeaveRequest.success) {
+          router.push('/dashboard');
+        } else {
+          const err = res.data.submitLeaveRequest.error || 'Erreur lors de la soumission.';
+          setErrorMsg(err);
+          if (err.includes('préavis')) {
+            setFormData((prev) => ({ ...prev, isEmergency: true }));
+          }
         }
       }
     } catch (err: any) {
       setErrorMsg(err.message || 'Une erreur est survenue.');
     }
   };
+
+  if (loadingRequest) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-3xl mx-auto space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -118,7 +227,9 @@ export default function NewLeaveRequest() {
           <ArrowLeft className="w-5 h-5 text-text-muted" />
         </Link>
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-text-main">Nouvelle Demande de Congé</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-text-main">
+            {editId ? 'Modifier la Demande de Congé' : 'Nouvelle Demande de Congé'}
+          </h1>
           <p className="text-text-muted mt-1">Remplissez le formulaire ci-dessous pour soumettre votre demande.</p>
         </div>
       </div>
@@ -163,7 +274,7 @@ export default function NewLeaveRequest() {
               {loadingTypes ? (
                 <option disabled>Chargement...</option>
               ) : (
-                data?.leaveTypes.map((type: any) => (
+                typesData?.leaveTypes.map((type: any) => (
                   <option key={type.id} value={type.id}>
                     {type.libelle} {type.noticeDays > 0 ? `(Préavis ${type.noticeDays}j)` : ''}
                   </option>
@@ -248,13 +359,15 @@ export default function NewLeaveRequest() {
 
           {selectedType?.requiresAttachment && (
             <div>
-              <label className="block text-sm font-medium text-text-main mb-1.5">Pièce jointe / Justificatif (Obligatoire)</label>
+              <label className="block text-sm font-medium text-text-main mb-1.5">
+                Pièce jointe / Justificatif {editId ? '(Optionnel en modification)' : '(Obligatoire)'}
+              </label>
               <div className="relative flex items-center border border-border rounded-xl p-3 bg-background">
                 <Upload className="w-5 h-5 text-primary mr-3 shrink-0" />
                 <input
                   type="file"
                   accept=".pdf,.png,.jpg,.jpeg"
-                  required
+                  required={!editId && selectedType?.requiresAttachment}
                   onChange={(e) => setFileAttachment(e.target.files?.[0] || null)}
                   className="text-sm text-text-muted file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20 cursor-pointer"
                 />
@@ -282,10 +395,18 @@ export default function NewLeaveRequest() {
             ) : (
               <CheckCircle className="w-4 h-4" />
             )}
-            Soumettre la demande
+            {editId ? 'Enregistrer les modifications' : 'Soumettre la demande'}
           </button>
         </div>
       </form>
     </div>
+  );
+}
+
+export default function NewLeaveRequest() {
+  return (
+    <Suspense fallback={<div className="flex justify-center py-12"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>}>
+      <LeaveRequestForm />
+    </Suspense>
   );
 }

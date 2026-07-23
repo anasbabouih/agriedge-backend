@@ -213,7 +213,15 @@ class Query(graphene.ObjectType):
     pending_validations_count = graphene.Int()
 
     def resolve_leave_types(self, info):
-        return LeaveType.objects.all()
+        types = LeaveType.objects.all()
+        if not types.exists():
+            LeaveType.objects.create(libelle='Congé Payé', deductible_solde=True, requires_attachment=False, notice_days=7, requires_motif=False)
+            LeaveType.objects.create(libelle='Congé Sans Solde', deductible_solde=False, requires_attachment=False, notice_days=0, requires_motif=True)
+            LeaveType.objects.create(libelle='Congé Exceptionnel', deductible_solde=False, requires_attachment=True, notice_days=0, requires_motif=True)
+            LeaveType.objects.create(libelle='Maladie', deductible_solde=False, requires_attachment=True, notice_days=0, requires_motif=False)
+            LeaveType.objects.create(libelle='Récupération', deductible_solde=False, requires_attachment=False, notice_days=0, requires_motif=False)
+            types = LeaveType.objects.all()
+        return types
 
     @login_required
     def resolve_my_requests(self, info):
