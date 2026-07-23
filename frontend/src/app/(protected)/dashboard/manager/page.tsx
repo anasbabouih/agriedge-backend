@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, gql } from '@apollo/client';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Loader2, Users, AlertTriangle, FileText, CheckCircle, XCircle, Clock } from 'lucide-react';
+import { Loader2, Users, AlertTriangle, FileText, CheckCircle, XCircle, Clock, Calendar as CalendarIcon, UserCheck, Palmtree } from 'lucide-react';
 import { DocumentViewerModal } from '@/components/DocumentViewerModal';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
@@ -22,6 +22,7 @@ const MANAGER_DASHBOARD_QUERY = gql`
     pendingApprovals {
       id
       employee {
+        id
         firstName
         lastName
       }
@@ -38,6 +39,7 @@ const MANAGER_DASHBOARD_QUERY = gql`
     allLeavesCalendar {
       id
       employee {
+        id
         firstName
         lastName
       }
@@ -47,6 +49,17 @@ const MANAGER_DASHBOARD_QUERY = gql`
       dateDebut
       dateFin
       statut
+    }
+    allEmployees {
+      id
+      firstName
+      lastName
+      matricule
+      soldeConges
+      role
+      department {
+        nom
+      }
     }
   }
 `;
@@ -96,7 +109,7 @@ export default function ManagerDashboardPage() {
     return <div className="text-red-500 font-bold p-8 text-center text-xl">Accès Réservé aux Managers.</div>;
   }
 
-  const { managerDashboardStats, pendingApprovals, allLeavesCalendar } = data;
+  const { managerDashboardStats, pendingApprovals, allLeavesCalendar, allEmployees } = data;
 
   const handleApprove = (id: string) => {
     if (confirm("Confirmez-vous la validation de cette demande ?")) {
@@ -115,14 +128,57 @@ export default function ManagerDashboardPage() {
     }
   };
 
-  const calendarEvents = allLeavesCalendar.map((leave: any) => ({
+  const calendarEvents = (allLeavesCalendar || []).map((leave: any) => ({
     id: leave.id,
-    title: `${leave.employee.firstName} ${leave.employee.lastName} - ${leave.leaveType.libelle}`,
+    title: `${leave.employee?.firstName} ${leave.employee?.lastName} - ${leave.leaveType?.libelle}`,
     start: leave.dateDebut,
     end: new Date(new Date(leave.dateFin).getTime() + 86400000).toISOString().split('T')[0],
     backgroundColor: leave.statut === 'VALIDE' ? '#10b981' : (leave.statut === 'EN_ATTENTE_RH' ? '#3b82f6' : '#f59e0b'),
     borderColor: 'transparent'
   }));
+
+  const todayStr = new Date().toISOString().split('T')[0];
+
+  // Helper to determine employee vacation status
+  const getEmployeeVacationStatus = (empId: string) => {
+    const activeLeave = (allLeavesCalendar || []).find((l: any) => 
+      l.employee?.id === empId && 
+      l.statut === 'VALIDE' && 
+      l.dateDebut <= todayStr && 
+      l.dateFin >= todayStr
+    );
+
+    if (activeLeave) {
+      return {
+        isVacation: true,
+        label: `En congé jusqu'au ${new Date(activeLeave.dateFin).toLocaleDateString('fr-FR')}`,
+        type: activeLeave.leaveType?.libelle,
+        color: 'bg-amber-500/10 text-amber-500 border-amber-500/20'
+      };
+    }
+
+    const upcomingLeave = (allLeavesCalendar || []).find((l: any) =>
+      l.employee?.id === empId &&
+      (l.statut === 'VALIDE' || l.statut === 'EN_ATTENTE_RH' || l.statut === 'EN_ATTENTE_N1') &&
+      l.dateDebut > todayStr
+    );
+
+    if (upcomingLeave) {
+      return {
+        isVacation: false,
+        label: `Prochain congé le ${new Date(upcomingLeave.dateDebut).toLocaleDateString('fr-FR')}`,
+        type: upcomingLeave.leaveType?.libelle,
+        color: 'bg-blue-500/10 text-blue-400 border-blue-500/20'
+      };
+    }
+
+    return {
+      isVacation: false,
+      label: 'Présent(e) en poste',
+      type: null,
+      color: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+    };
+  };
 
   return (
     <div className="space-y-8">
@@ -161,6 +217,52 @@ export default function ManagerDashboardPage() {
         </div>
       </div>
 
+      {/* Team Vacation & Presence Tracker */}
+      <div className="glass rounded-3xl overflow-hidden p-6 space-y-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-xl font-bold flex items-center gap-2">
+              <Palmtree className="w-5 h-5 text-primary" />
+              Suivi des Présences & Vacances de l'Équipe
+            </h2>
+            <p className="text-xs text-text-muted mt-1">Consultez en direct qui est en congé, qui est présent et les soldes de vos collaborateurs.</p>
+          </div>
+          <span className="text-xs font-semibold px-3 py-1.5 rounded-full bg-primary/10 text-primary border border-primary/20">
+            {allEmployees?.length || 0} Collaborateurs
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pt-2">
+          {(allEmployees || []).map((emp: any) => {
+            const status = getEmployeeVacationStatus(emp.id);
+            return (
+              <div key={emp.id} className="p-4 rounded-2xl bg-surface-hover/50 border border-border hover:border-primary/30 transition-all">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <p className="font-semibold text-text-main">{emp.firstName} {emp.lastName}</p>
+                    <p className="text-xs text-text-muted">{emp.department?.nom || 'Général'} • {emp.matricule}</p>
+                  </div>
+                  <span className="text-xs font-bold text-primary bg-primary/10 px-2 py-1 rounded-lg">
+                    {emp.soldeConges}j
+                  </span>
+                </div>
+                <div className="mt-3 pt-3 border-t border-border flex items-center justify-between">
+                  <span className={`inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full border ${status.color}`}>
+                    <span className="w-1.5 h-1.5 rounded-full bg-current" />
+                    {status.label}
+                  </span>
+                  {status.type && (
+                    <span className="text-[10px] uppercase font-bold text-text-muted">
+                      {status.type}
+                    </span>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
       <div className="glass rounded-3xl overflow-hidden">
         <div className="p-6 border-b border-border">
           <h2 className="text-xl font-bold">File d'Approbation (Équipe)</h2>
@@ -172,20 +274,19 @@ export default function ManagerDashboardPage() {
                 <th className="p-4 font-medium">Collaborateur</th>
                 <th className="p-4 font-medium">Type</th>
                 <th className="p-4 font-medium">Période</th>
-                <th className="p-4 font-medium">Alertes</th>
                 <th className="p-4 font-medium text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {pendingApprovals.map((req: any) => (
+              {(pendingApprovals || []).map((req: any) => (
                 <tr key={req.id} className="hover:bg-surface-hover/30 transition-colors">
                   <td className="p-4">
-                    <div className="font-semibold">{req.employee.firstName} {req.employee.lastName}</div>
+                    <div className="font-semibold">{req.employee?.firstName} {req.employee?.lastName}</div>
                     {req.pieceJointe && (
                       <button 
                         onClick={() => {
                           setDocUrl(req.pieceJointe);
-                          setDocName(`Certificat - ${req.employee.firstName}`);
+                          setDocName(`Certificat - ${req.employee?.firstName}`);
                           setDocLeaveId(req.id);
                           setDocModalOpen(true);
                         }}
@@ -196,14 +297,11 @@ export default function ManagerDashboardPage() {
                     )}
                   </td>
                   <td className="p-4 text-sm">
-                    <div className="font-medium">{req.leaveType.libelle}</div>
+                    <div className="font-medium">{req.leaveType?.libelle}</div>
                     <div className="text-xs text-text-muted">{req.joursDecomptes} jour(s)</div>
                   </td>
                   <td className="p-4 text-sm text-text-muted">
                     {new Date(req.dateDebut).toLocaleDateString('fr-FR')} au {new Date(req.dateFin).toLocaleDateString('fr-FR')}
-                  </td>
-                  <td className="p-4">
-                    {/* Overlap alerts placeholder */}
                   </td>
                   <td className="p-4 text-right space-x-2">
                     <button 
@@ -226,9 +324,9 @@ export default function ManagerDashboardPage() {
                   </td>
                 </tr>
               ))}
-              {pendingApprovals.length === 0 && (
+              {(!pendingApprovals || pendingApprovals.length === 0) && (
                 <tr>
-                  <td colSpan={5} className="p-8 text-center text-text-muted">
+                  <td colSpan={4} className="p-8 text-center text-text-muted">
                     Aucune demande en attente de votre validation.
                   </td>
                 </tr>
