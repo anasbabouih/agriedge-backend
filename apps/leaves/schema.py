@@ -239,10 +239,19 @@ class Query(graphene.ObjectType):
         user = info.context.user
         from apps.employees.models import Employee
         
-        if user.role == Employee.Role.MANAGER_N1 or user.role == Employee.Role.ADMIN:
-            # Manager sees requests from employees they manage that are EN_ATTENTE_N1 or EN_ATTENTE_ANNULATION
+        if user.role == Employee.Role.ADMIN:
+            # Admin sees all pending requests
             return LeaveRequest.objects.filter(
-                employee__manager=user,
+                statut__in=['EN_ATTENTE_N1', 'EN_ATTENTE_RH', 'EN_ATTENTE_ANNULATION']
+            )
+        elif user.role == Employee.Role.MANAGER_N1:
+            subordinates = user.subordinates.all()
+            if subordinates.exists():
+                return LeaveRequest.objects.filter(
+                    employee__in=subordinates,
+                    statut__in=['EN_ATTENTE_N1', 'EN_ATTENTE_ANNULATION']
+                )
+            return LeaveRequest.objects.filter(
                 statut__in=['EN_ATTENTE_N1', 'EN_ATTENTE_ANNULATION']
             )
         elif user.role == Employee.Role.RH:
@@ -371,10 +380,17 @@ class Query(graphene.ObjectType):
         if user.role != Employee.Role.MANAGER_N1 and user.role != Employee.Role.ADMIN:
             raise Exception("Accès réservé aux managers.")
             
-        subordinates = user.subordinates.all()
+        if user.role == Employee.Role.ADMIN:
+            subordinates = Employee.objects.exclude(id=user.id)
+        else:
+            subordinates = user.subordinates.all()
+            if not subordinates.exists() and user.department:
+                subordinates = Employee.objects.filter(department=user.department).exclude(id=user.id)
+            if not subordinates.exists():
+                subordinates = Employee.objects.exclude(id=user.id)
         
         # 1. Pending N1 count
-        pending_n1 = LeaveRequest.objects.filter(employee__in=subordinates, statut='EN_ATTENTE_N1').count()
+        pending_n1 = LeaveRequest.objects.filter(employee__in=subordinates, statut__in=['EN_ATTENTE_N1', 'EN_ATTENTE_ANNULATION']).count()
         
         # 2. Absent today
         today = timezone.now().date()
