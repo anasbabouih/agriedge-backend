@@ -2,11 +2,12 @@
 
 import { useQuery, useMutation, gql } from '@apollo/client';
 import { motion } from 'framer-motion';
-import { Clock, CheckCircle, XCircle, FileText, Loader2, AlertTriangle, Archive, Trash2, Edit, CalendarCheck, TrendingUp, Hourglass, Palmtree, UserPlus, Calendar } from 'lucide-react';
+import { Clock, CheckCircle, XCircle, FileText, Loader2, AlertTriangle, Archive, Trash2, Edit, CalendarCheck, TrendingUp, Hourglass, Palmtree, UserPlus, Calendar, Key } from 'lucide-react';
 import Link from 'next/link';
 import { useState } from 'react';
 import { BalanceRing } from '@/components/BalanceRing';
 import { useToast } from '@/components/Toast';
+import { ChangePasswordModal } from '@/components/ChangePasswordModal';
 
 const DASHBOARD_QUERY = gql`
   query GetDashboard {
@@ -98,6 +99,7 @@ export default function DashboardPage() {
   const [empToEdit, setEmpToEdit] = useState<any>(null);
   
   const [holidayModalOpen, setHolidayModalOpen] = useState(false);
+  const [passwordModalOpen, setPasswordModalOpen] = useState(false);
   
   const [docModalOpen, setDocModalOpen] = useState(false);
   const [docUrl, setDocUrl] = useState('');
@@ -223,6 +225,13 @@ export default function DashboardPage() {
               Espace Admin
             </Link>
           )}
+          <button 
+            onClick={() => setPasswordModalOpen(true)}
+            className="btn-secondary flex items-center gap-2"
+          >
+            <Key className="w-4 h-4 text-amber-400" />
+            Mot de passe
+          </button>
           <Link href="/leaves/new" className="btn-primary flex items-center gap-2">
             <CalendarCheck className="w-4 h-4" />
             Nouvelle Demande
@@ -575,6 +584,11 @@ export default function DashboardPage() {
       <HolidaysModal 
         isOpen={holidayModalOpen}
         onClose={() => setHolidayModalOpen(false)}
+      />
+
+      <ChangePasswordModal
+        isOpen={passwordModalOpen}
+        onClose={() => setPasswordModalOpen(false)}
       />
     </div>
   );
