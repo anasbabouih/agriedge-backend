@@ -10,9 +10,27 @@ import {
 import { setContext } from '@apollo/client/link/context';
 import { createUploadLink } from 'apollo-upload-client';
 
+function getBackendUrl() {
+  if (process.env.BACKEND_INTERNAL_URL) {
+    const baseUrl = process.env.BACKEND_INTERNAL_URL.replace(/\/+$/, '');
+    return `${baseUrl}/graphql/`;
+  }
+
+  if (typeof window === 'undefined') {
+    console.error(
+      "\x1b[31m%s\x1b[0m",
+      "[AgriEdge Config Warning] 'BACKEND_INTERNAL_URL' environment variable is not defined! " +
+      "Falling back to http://localhost:8000/graphql/. Please configure BACKEND_INTERNAL_URL in your Vercel Project Environment Variables."
+    );
+  }
+
+  // Fallback for local development and build-time static generation
+  return 'http://localhost:8000/graphql/';
+}
+
 function makeClient() {
   const uri = typeof window === 'undefined' 
-    ? process.env.BACKEND_INTERNAL_URL ? `${process.env.BACKEND_INTERNAL_URL}/graphql/` : 'http://backend:8000/graphql/'
+    ? getBackendUrl()
     : '/api/graphql';
 
   const httpLink = createUploadLink({
